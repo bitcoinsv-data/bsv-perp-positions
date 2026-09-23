@@ -2,8 +2,9 @@
 
 An hourly snapshot of the open positions on the Bitcoin SV (BSV) perpetual on
 Hyperliquid, with the liquidation price the exchange itself reports for each
-one. It feeds the liquidation panel of the live
-[Bitcoin SV funding rate and open interest terminal](https://bitcoinsv.it/bsv-funding-rate/)
+one. It feeds the live
+[Bitcoin SV liquidation map](https://bitcoinsv.it/bsv-liquidation-map/) and the liquidation
+panel of the [Bitcoin SV funding rate and open interest terminal](https://bitcoinsv.it/bsv-funding-rate/)
 on bitcoinsv.it.
 
 **Latest file:** https://bitcoinsv-data.github.io/bsv-perp-positions/bsv-positions.json
