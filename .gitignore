@@ -1,0 +1,4 @@
+data/*
+!data/seen-addresses.txt
+public/
+__pycache__/
