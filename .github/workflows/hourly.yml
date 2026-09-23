@@ -1,0 +1,70 @@
+name: Hourly positions
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      watch_minutes:
+        description: "Minutes to listen to BSV trades before the sweep"
+        default: "20"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: positions
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Previous file (publish guard and leverage tiers)
+        run: curl -sf https://bitcoinsv-data.github.io/bsv-perp-positions/bsv-positions.json -o data/bsv-positions.json || true
+
+      - name: Listen to BSV trades
+        run: python watch_addresses.py --minutes "${{ github.event.inputs.watch_minutes || '20' }}" || true
+
+      - name: Sweep positions
+        run: python collect_positions.py
+
+      - name: Save newly seen addresses
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/seen-addresses.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Seen addresses"
+            git pull --rebase
+            git push
+          fi
+
+      - name: Stage the published file
+        run: |
+          mkdir -p public
+          cp data/bsv-positions.json public/
+          touch public/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
