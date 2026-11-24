@@ -13,7 +13,6 @@ permissions:
   contents: write
   pages: write
   id-token: write
-  actions: read
 
 concurrency:
   group: positions
@@ -25,7 +24,7 @@ jobs:
     timeout-minutes: 45
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url || steps.deploy_retry.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy_2.outputs.page_url || steps.deploy_3.outputs.page_url || steps.deploy_4.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -67,28 +66,35 @@ jobs:
         with:
           path: public
 
-      - name: Wait until the artifact is listed
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          seen=0
-          for i in $(seq 1 90); do
-            n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" --jq .total_count 2>/dev/null || true)
-            case "$n" in ''|*[!0-9]*) n=0 ;; esac
-            if [ "$n" -ge 1 ]; then seen=$((seen + 1)); else seen=0; fi
-            if [ "$seen" -ge 2 ]; then echo "Artifact listed after $(( (i - 1) * 2 )) s"; exit 0; fi
-            sleep 2
-          done
-          echo "Artifact not listed after 180 s, trying the deploy anyway"
+      - name: Pause before deploying
+        run: sleep 15
 
       - id: deploy
         continue-on-error: true
         uses: actions/deploy-pages@v4
 
-      - name: Pause before the second try
+      - name: Pause before try 2
         if: steps.deploy.outcome == 'failure'
-        run: sleep 60
+        run: sleep 30
 
-      - id: deploy_retry
+      - id: deploy_2
         if: steps.deploy.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Pause before try 3
+        if: steps.deploy_2.outcome == 'failure'
+        run: sleep 90
+
+      - id: deploy_3
+        if: steps.deploy_2.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Pause before try 4
+        if: steps.deploy_3.outcome == 'failure'
+        run: sleep 240
+
+      - id: deploy_4
+        if: steps.deploy_3.outcome == 'failure'
         uses: actions/deploy-pages@v4
